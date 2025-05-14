@@ -1,0 +1,7 @@
+sqlalchemy
+psycopg2-binary
+requests
+pandas
+openai
+python-dotenv
+functions-framework

@@ -1,0 +1,33 @@
+# Global ignores
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+*.DS_Store
+*.log
+
+# Virtual environments
+env/
+venv/
+.venv/
+
+# Python-specific
+.ipynb_checkpoints/
+*.egg-info/
+.eggs/
+
+# Streamlit secrets (used in dashboard)
+dashboard/.streamlit/secrets.toml
+
+# Environment variables
+.env
+
+# Output / data artifacts
+output/
+*.csv
+
+# Cloud Function ignores
+cloud_function/.gcloudignore
+
+# OS junk
+Thumbs.db
