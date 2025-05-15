@@ -159,7 +159,7 @@ elif date_filter == "Custom Range":
 # --- Manual Refresh Button ---
 if st.sidebar.button("🔄 Refresh Data"):
     st.cache_data.clear()
-    st.experimental_rerun()
+    st.rerun()
 
 # --- Load filtered data ---
 df = load_data(start_date, end_date)
