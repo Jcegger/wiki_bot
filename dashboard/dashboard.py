@@ -156,6 +156,11 @@ elif date_filter == "Custom Range":
         st.sidebar.error("Start date must be before end date.")
         st.stop()
 
+# --- Manual Refresh Button ---
+if st.sidebar.button("🔄 Refresh Data"):
+    st.cache_data.clear()
+    st.experimental_rerun()
+
 # --- Load filtered data ---
 df = load_data(start_date, end_date)
 df_filtered = df.copy()
