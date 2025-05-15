@@ -91,7 +91,22 @@ def run_pipeline():
     def save_to_postgres(conn, df):
         df["gpt_categories"] = df["gpt_categories"].apply(json.dumps)
         df["wiki_categories"] = df["wiki_categories"].apply(json.dumps)
+
+        # ✅ Remove rows with IDs that already exist in the DB
+        ids_to_check = tuple(df["id"].tolist())
+        if ids_to_check:
+            existing_ids_query = text("SELECT id FROM articles WHERE id = ANY(:ids)")
+            existing_ids = conn.execute(existing_ids_query, {"ids": list(ids_to_check)}).fetchall()
+            existing_ids = set(row[0] for row in existing_ids)
+            df = df[~df["id"].isin(existing_ids)]
+
+        if df.empty:
+            logging.info("ℹ️ No new articles to insert (all IDs already exist).")
+            return
+
+        # Insert remaining new rows
         df.to_sql("articles", conn.engine, if_exists="append", index=False, method="multi")
+
 
     def get_short_description(title):
         url = f"https://en.wikipedia.org/api/rest_v1/page/summary/{title}"
