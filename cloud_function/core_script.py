@@ -90,23 +90,25 @@ def run_pipeline():
 
     def save_to_postgres(conn, df):
         import json
+        from sqlalchemy import bindparam
 
         df["gpt_categories"] = df["gpt_categories"].apply(json.dumps)
         df["wiki_categories"] = df["wiki_categories"].apply(json.dumps)
 
-        # Drop duplicates on 'id' that already exist in DB
-        ids = tuple(df["id"].tolist())
+        ids = list(df["id"])
+        if not ids:
+            return
 
-        existing_ids = set()
-        if ids:
-            result = conn.execute(text("SELECT id FROM articles WHERE id = ANY(:ids)"), {"ids": list(ids)})
-            existing_ids = set(row[0] for row in result.fetchall())
+        query = text("SELECT id FROM articles WHERE id = ANY(:ids)")
+        query = query.bindparams(bindparam("ids", expanding=True))  # ✅ key fix
+
+        result = conn.execute(query, {"ids": ids})
+        existing_ids = set(row[0] for row in result.fetchall())
 
         df = df[~df["id"].isin(existing_ids)]
 
         if not df.empty:
             df.to_sql("articles", conn.engine, if_exists="append", index=False, method="multi")
-
 
     def get_short_description(title):
         url = f"https://en.wikipedia.org/api/rest_v1/page/summary/{title}"
