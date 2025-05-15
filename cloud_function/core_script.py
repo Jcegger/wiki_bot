@@ -1,7 +1,7 @@
 def run_pipeline():
 
 
-    from sqlalchemy import create_engine, text
+    from sqlalchemy import create_engine, text, tuple_
     import pandas as pd
     import requests
     from datetime import date, timedelta, datetime
@@ -92,11 +92,11 @@ def run_pipeline():
         df["gpt_categories"] = df["gpt_categories"].apply(json.dumps)
         df["wiki_categories"] = df["wiki_categories"].apply(json.dumps)
 
-        # ✅ Remove rows with IDs that already exist in the DB
-        ids_to_check = tuple(df["id"].tolist())
-        if ids_to_check:
+        if not df.empty:
+            ids_to_check = list(df["id"])
+            # ⚠️ Use a proper tuple binding workaround
             existing_ids_query = text("SELECT id FROM articles WHERE id = ANY(:ids)")
-            existing_ids = conn.execute(existing_ids_query, {"ids": list(ids_to_check)}).fetchall()
+            existing_ids = conn.execute(existing_ids_query, {"ids": ids_to_check}).fetchall()
             existing_ids = set(row[0] for row in existing_ids)
             df = df[~df["id"].isin(existing_ids)]
 
@@ -104,7 +104,6 @@ def run_pipeline():
             logging.info("ℹ️ No new articles to insert (all IDs already exist).")
             return
 
-        # Insert remaining new rows
         df.to_sql("articles", conn.engine, if_exists="append", index=False, method="multi")
 
 
