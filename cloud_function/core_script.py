@@ -92,19 +92,23 @@ def run_pipeline():
         df["gpt_categories"] = df["gpt_categories"].apply(json.dumps)
         df["wiki_categories"] = df["wiki_categories"].apply(json.dumps)
 
-        if not df.empty:
-            ids_to_check = list(df["id"])
-            # ⚠️ Use a proper tuple binding workaround
-            existing_ids_query = text("SELECT id FROM articles WHERE id = ANY(:ids)")
-            existing_ids = conn.execute(existing_ids_query, {"ids": ids_to_check}).fetchall()
-            existing_ids = set(row[0] for row in existing_ids)
-            df = df[~df["id"].isin(existing_ids)]
+        # --- TEMP TABLE deduplication
+        temp_table = "temp_articles_upload"
+        df.head(0).to_sql(temp_table, conn.engine, if_exists="replace", index=False)  # just schema
+        df.to_sql(temp_table, conn.engine, if_exists="append", index=False, method="multi")
 
-        if df.empty:
-            logging.info("ℹ️ No new articles to insert (all IDs already exist).")
-            return
+        dedup_query = f"""
+            INSERT INTO articles (date, article, views, link, description, gpt_categories, wiki_categories, slug, id)
+            SELECT t.date, t.article, t.views, t.link, t.description, t.gpt_categories, t.wiki_categories, t.slug, t.id
+            FROM {temp_table} t
+            LEFT JOIN articles a ON t.id = a.id
+            WHERE a.id IS NULL;
+            
+            DROP TABLE IF EXISTS {temp_table};
+        """
 
-        df.to_sql("articles", conn.engine, if_exists="append", index=False, method="multi")
+        conn.execute(text(dedup_query))
+
 
 
     def get_short_description(title):
