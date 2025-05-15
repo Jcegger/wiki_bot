@@ -89,22 +89,37 @@ def run_pipeline():
         )
 
     def save_to_postgres(conn, df):
+        import json
+        import logging
 
+        # Ensure JSON serialization
         df["gpt_categories"] = df["gpt_categories"].apply(json.dumps)
         df["wiki_categories"] = df["wiki_categories"].apply(json.dumps)
 
-        # Avoid inserting duplicates if function reruns
-        existing_ids = set(
-            row[0] for row in conn.execute(
-                text("SELECT id FROM articles WHERE id = ANY(:ids)"),
-                {"ids": list(df["id"])}
-            )
-        )
+        temp_table = "temp_articles_upload"
+        logging.info(f"🛠️ Creating temporary table '{temp_table}'...")
 
-        df = df[~df["id"].isin(existing_ids)]
+        # Step 1: Create empty schema-matching temp table
+        df.head(0).to_sql(temp_table, conn.engine, if_exists="replace", index=False)
 
-        if not df.empty:
-            df.to_sql("articles", conn.engine, if_exists="append", index=False, method="multi")
+        # Step 2: Insert all rows into temp table
+        df.to_sql(temp_table, conn.engine, if_exists="append", index=False, method="multi")
+        logging.info(f"📦 Loaded {len(df)} rows into '{temp_table}'")
+
+        # Step 3: Insert deduplicated rows into main table
+        insert_query = f"""
+            INSERT INTO articles (date, article, views, link, description, gpt_categories, wiki_categories, slug, id)
+            SELECT t.date, t.article, t.views, t.link, t.description, t.gpt_categories, t.wiki_categories, t.slug, t.id
+            FROM {temp_table} t
+            LEFT JOIN articles a ON t.id = a.id
+            WHERE a.id IS NULL;
+
+            DROP TABLE IF EXISTS {temp_table};
+        """
+
+        conn.execute(text(insert_query))
+        logging.info("✅ Deduplicated rows inserted successfully into 'articles'. Temp table dropped.")
+
 
     def get_short_description(title):
         url = f"https://en.wikipedia.org/api/rest_v1/page/summary/{title}"
