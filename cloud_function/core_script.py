@@ -93,16 +93,18 @@ def run_pipeline():
         import logging
         from sqlalchemy import text, bindparam
 
+        # Serialize nested columns
         df["gpt_categories"] = df["gpt_categories"].apply(json.dumps)
         df["wiki_categories"] = df["wiki_categories"].apply(json.dumps)
 
         ids = list(df["id"])
         if not ids:
+            logging.info("🟡 No rows to insert (empty DataFrame).")
             return
 
-        # ✅ Use IN instead of ANY and bind with expanding=True
+        # ✅ Query existing IDs using IN + expanding
         query = text("SELECT id FROM articles WHERE id IN :ids")
-        query = query.bindparams(bindparam("ids", expanding=True))  # ✅ this is key
+        query = query.bindparams(bindparam("ids", expanding=True))
 
         result = conn.execute(query, {"ids": ids})
         existing_ids = set(row[0] for row in result.fetchall())
@@ -110,11 +112,14 @@ def run_pipeline():
         before = len(df)
         df = df[~df["id"].isin(existing_ids)]
 
+        # ✅ Drop duplicates within the remaining dataframe (same ID may appear twice in the input)
+        df = df.drop_duplicates(subset=["id"])
+
         if not df.empty:
             logging.info(f"📦 Inserting {len(df)} new rows (skipped {before - len(df)} duplicates)")
             df.to_sql("articles", conn.engine, if_exists="append", index=False, method="multi")
         else:
-            logging.info(f"🚫 No new rows to insert — all {before} were duplicates.")
+            logging.info(f"🚫 No new rows to insert — all {before} were duplicates or already existed.")
 
     def get_short_description(title):
         url = f"https://en.wikipedia.org/api/rest_v1/page/summary/{title}"
