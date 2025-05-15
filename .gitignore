@@ -21,6 +21,7 @@ dashboard/.streamlit/secrets.toml
 
 # Environment variables
 .env
+secrets.toml
 
 # Output / data artifacts
 output/
