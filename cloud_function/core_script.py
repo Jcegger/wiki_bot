@@ -90,7 +90,8 @@ def run_pipeline():
 
     def save_to_postgres(conn, df):
         import json
-        from sqlalchemy import bindparam
+        import logging
+        from sqlalchemy import text, bindparam
 
         df["gpt_categories"] = df["gpt_categories"].apply(json.dumps)
         df["wiki_categories"] = df["wiki_categories"].apply(json.dumps)
@@ -99,16 +100,21 @@ def run_pipeline():
         if not ids:
             return
 
-        query = text("SELECT id FROM articles WHERE id = ANY(:ids)")
-        query = query.bindparams(bindparam("ids", expanding=True))  # ✅ key fix
+        # ✅ Use IN instead of ANY and bind with expanding=True
+        query = text("SELECT id FROM articles WHERE id IN :ids")
+        query = query.bindparams(bindparam("ids", expanding=True))  # ✅ this is key
 
         result = conn.execute(query, {"ids": ids})
         existing_ids = set(row[0] for row in result.fetchall())
 
+        before = len(df)
         df = df[~df["id"].isin(existing_ids)]
 
         if not df.empty:
+            logging.info(f"📦 Inserting {len(df)} new rows (skipped {before - len(df)} duplicates)")
             df.to_sql("articles", conn.engine, if_exists="append", index=False, method="multi")
+        else:
+            logging.info(f"🚫 No new rows to insert — all {before} were duplicates.")
 
     def get_short_description(title):
         url = f"https://en.wikipedia.org/api/rest_v1/page/summary/{title}"
