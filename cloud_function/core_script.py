@@ -256,15 +256,15 @@ def run_pipeline():
             )
             df_final = df_final.drop(columns=["gpt_categories_x", "gpt_categories_y"])
 
-    df_final = df_final.sort_values("views", ascending=False).reset_index(drop=True)
-    df_final["date"] = datetime.strptime(yesterday_str, "%Y/%m/%d").date().isoformat()
-    df_final["slug"] = df_final["link"].apply(lambda x: x.split("/wiki/")[-1])
-    df_final["id"] = df_final["date"] + "::" + df_final["slug"]
+        df_final = df_final.sort_values("views", ascending=False).reset_index(drop=True)
+        df_final["date"] = datetime.strptime(yesterday_str, "%Y/%m/%d").date().isoformat()
+        df_final["slug"] = df_final["link"].apply(lambda x: x.split("/wiki/")[-1])
+        df_final["id"] = df_final["date"] + "::" + df_final["slug"]
 
-    df_final = df_final[[
-        "date", "article", "views", "link", "description",
-        "gpt_categories", "wiki_categories", "slug", "id"
-    ]]
+        df_final = df_final[[
+            "date", "article", "views", "link", "description",
+            "gpt_categories", "wiki_categories", "slug", "id"
+        ]]
 
-    save_to_postgres(conn, df_final)
-    logging.info(f"✅ Successfully processed {len(df_final)} articles for {df_final['date'].iloc[0]}")
+        save_to_postgres(conn, df_final)
+        logging.info(f"✅ Successfully processed {len(df_final)} articles for {df_final['date'].iloc[0]}")
