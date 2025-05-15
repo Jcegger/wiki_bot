@@ -234,12 +234,13 @@ def run_pipeline():
             categories_df = gpt_df.rename(columns={"title": "article", "categories": "gpt_categories"})
             df_final = df_final.merge(categories_df, on="article", how="left")
 
-            if "gpt_categories_x" in df_final.columns and "gpt_categories_y" in df_final.columns:
-                df_final["gpt_categories"] = df_final.apply(
-                    lambda row: row["gpt_categories_y"] if pd.isna(row["gpt_categories_x"]) else row["gpt_categories_x"],
-                    axis=1
-                )
-                df_final = df_final.drop(columns=["gpt_categories_x", "gpt_categories_y"])
+        if "gpt_categories_x" in df_final.columns and "gpt_categories_y" in df_final.columns:
+            df_final["gpt_categories"] = df_final.apply(
+                lambda row: row["gpt_categories_y"] if row["gpt_categories_x"] is None else row["gpt_categories_x"],
+                axis=1
+            )
+            df_final = df_final.drop(columns=["gpt_categories_x", "gpt_categories_y"])
+
 
         df_final = df_final.sort_values("views", ascending=False).reset_index(drop=True)
         df_final["date"] = datetime.strptime(yesterday_str, "%Y/%m/%d").date().isoformat()
