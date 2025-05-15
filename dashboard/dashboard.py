@@ -302,7 +302,7 @@ if view_mode == "Detailed View":
             key=button_key
         ):
             st.session_state[insight_key] = not st.session_state[insight_key]
-            st.experimental_rerun()  # Ensures the button label immediately reflects the new state
+            st.rerun()  # Ensures the button label immediately reflects the new state
 
         # Render content if toggled on
         if st.session_state[insight_key]:
@@ -356,12 +356,12 @@ col1, col2, col3 = st.columns([1, 2, 1])
 with col1:
     if st.button("⬅️ Previous", key="prev_page"):
         st.session_state.current_page = max(1, st.session_state.current_page - 1)
-        st.experimental_rerun()
+        st.rerun()
 
 with col3:
     if st.button("Next ➡️", key="next_page"):
         st.session_state.current_page = min(total_pages, st.session_state.current_page + 1)
-        st.experimental_rerun()
+        st.rerun()
 
 with col2:
     page_options = list(range(1, total_pages + 1))
@@ -379,7 +379,7 @@ with col2:
     )
     if selected_page != st.session_state.current_page:
         st.session_state.current_page = selected_page
-        st.experimental_rerun()
+        st.rerun()
 
 # --- Top Article per Category ---
 st.markdown("## \U0001F3C5 Top Article in Each Category")
